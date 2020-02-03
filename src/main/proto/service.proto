@@ -1,0 +1,23 @@
+//#service-request-reply
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.mns.akkagrpctest";
+option java_outer_classname = "DataServiceProto";
+
+// The greeting service definition.
+service DataService {
+    rpc Subscribe (DataRequest) returns (stream RowSet) {}
+}
+
+// The request message
+message DataRequest {
+    string topic = 1;
+    repeated string column = 2;
+    repeated int32 key = 3;
+}
+
+// The response message
+message RowSet {
+    repeated string value = 1;
+}
