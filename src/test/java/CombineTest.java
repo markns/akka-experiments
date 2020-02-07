@@ -2,15 +2,15 @@ import akka.NotUsed;
 import akka.actor.ActorSystem;
 import akka.actor.Cancellable;
 import akka.japi.Pair;
+import akka.japi.function.Function;
 import akka.stream.javadsl.Source;
+import com.google.common.base.MoreObjects;
 
 import java.time.Duration;
 import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.stream.Collectors;
+import java.util.*;
 
+@SuppressWarnings("Convert2Diamond")
 public class CombineTest {
 
 //    https://stackoverflow.com/questions/45801339/how-to-inner-join-2-sources-by-a-key-in-akka-scala
@@ -19,42 +19,66 @@ public class CombineTest {
 
         final ActorSystem system = ActorSystem.create("QuickStart");
 
-        Source<List<Product>, Cancellable> a = Source.tick(Duration.ZERO, Duration.ofDays(1),
-                List.of(new Product("a", LocalDate.of(2020, 12, 1)),
-                        new Product("b", LocalDate.of(2020, 6, 1)),
-                        new Product("c", LocalDate.of(2020, 12, 1)),
-                        new Product("d", LocalDate.of(2020, 6, 1)),
-                        new Product("e", LocalDate.of(2020, 12, 1)),
-                        new Product("d", LocalDate.of(2020, 12, 1))));
+        Random rand = new Random();
+        Source<Product, Cancellable> products = Source.tick(Duration.ZERO, Duration.ofSeconds(1), NotUsed.getInstance())
+                .map(__ -> new Product(rand.nextInt(10), LocalDate.of(2020, 12, 1)));
 
-        Source<String, Cancellable> irs = Source
-                .tick(Duration.ZERO, Duration.ofSeconds(1), NotUsed.getInstance())
-                .scan(0, (acc, x) -> acc + 1)
-                .map(seq -> "irs " + seq);
-
-        Random rnd = new Random();
-        a.mapConcat(x -> x.stream().collect(Collectors.groupingBy(Product::getDate)).entrySet())
-                .groupBy(Integer.MAX_VALUE, Map.Entry::getKey)
-                .zipLatestWith(irs, Pair::create)
-                .map(x -> Pair.create(x.first(), "solved " + x.second() + " " + rnd.nextInt()))
-                .mergeSubstreams()
-                .mapConcat(x -> x.first().getValue().)
-                .runForeach(System.out::println, system);
+        Source<Yield, Cancellable> yields = Source.tick(Duration.ZERO, Duration.ofMillis(600), NotUsed.getInstance())
+                .map(__ -> new Yield(rand.nextInt(10), rand.nextDouble()));
 
 
 
+//        https://www.codota.com/code/java/classes/akka.stream.FanInShape2
+//https://github.com/eclipse/ditto/blob/918bd866facccdd20a9d320448ec78ad35a13ad3/services/utils/akka/src/main/java/org/eclipse/ditto/services/utils/akka/controlflow/Transistor.java
+
+        Source<Pair<Product, Yield>, Cancellable> s = products.map(x -> (Object) x)
+                .merge(yields.map(x -> (Object) x))
+                .statefulMapConcat(() -> {
+                    return new Function<Object, Iterable<Pair<Product, Yield>>>() {
+                        Map<Integer, Product> products = new HashMap<>();
+                        Map<Integer, Yield> yields = new HashMap<>();
+
+                        @Override
+                        public Iterable<Pair<Product, Yield>> apply(Object o) {
+                            if (o instanceof Product) {
+                                Product p = (Product) o;
+                                products.put(p.getId(), p);
+                                if (yields.containsKey(p.getId())) {
+                                    return Collections.singletonList(Pair.create(p, yields.get(p.getId())));
+                                } else {
+                                    return Collections.emptyList();
+                                }
+                            } else if (o instanceof Yield) {
+                                Yield y = (Yield) o;
+                                yields.put(y.getId(), y);
+                                if (products.containsKey(y.getId())) {
+                                    return Collections.singletonList(Pair.create(products.get(y.getId()), y));
+                                } else {
+                                    return Collections.emptyList();
+                                }
+
+                            } else {
+                                return Collections.emptyList();
+                            }
+
+
+                        }
+                    };
+                });
+
+        s.runForeach(System.out::println, system);
     }
 
     private static class Product {
-        private final String id;
+        private final int id;
         private final LocalDate date;
 
-        private Product(String id, LocalDate date) {
+        private Product(int id, LocalDate date) {
             this.id = id;
             this.date = date;
         }
 
-        public String getId() {
+        public int getId() {
             return id;
         }
 
@@ -64,10 +88,32 @@ public class CombineTest {
 
         @Override
         public String toString() {
-            return "Bond{" +
-                    "id='" + id + '\'' +
-                    ", date=" + date +
-                    '}';
+            return MoreObjects.toStringHelper(this)
+                    .add("id", id)
+                    .add("date", date)
+                    .toString();
+        }
+    }
+
+    private static class Yield {
+        private final int id;
+        private final double value;
+
+        private Yield(int id, double value) {
+            this.id = id;
+            this.value = value;
+        }
+
+        public int getId() {
+            return id;
+        }
+
+        @Override
+        public String toString() {
+            return MoreObjects.toStringHelper(this)
+                    .add("id", id)
+                    .add("value", value)
+                    .toString();
         }
     }
 }
