@@ -1,10 +1,13 @@
+package com.mns.streams;
+
 import akka.NotUsed;
 import akka.actor.ActorSystem;
 import akka.actor.Cancellable;
 import akka.japi.Pair;
 import akka.japi.function.Function;
 import akka.stream.javadsl.Source;
-import com.google.common.base.MoreObjects;
+import com.mns.streams.model.Product;
+import com.mns.streams.model.Yield;
 
 import java.time.Duration;
 import java.time.LocalDate;
@@ -69,51 +72,4 @@ public class CombineTest {
         s.runForeach(System.out::println, system);
     }
 
-    private static class Product {
-        private final int id;
-        private final LocalDate date;
-
-        private Product(int id, LocalDate date) {
-            this.id = id;
-            this.date = date;
-        }
-
-        public int getId() {
-            return id;
-        }
-
-        public LocalDate getDate() {
-            return date;
-        }
-
-        @Override
-        public String toString() {
-            return MoreObjects.toStringHelper(this)
-                    .add("id", id)
-                    .add("date", date)
-                    .toString();
-        }
-    }
-
-    private static class Yield {
-        private final int id;
-        private final double value;
-
-        private Yield(int id, double value) {
-            this.id = id;
-            this.value = value;
-        }
-
-        public int getId() {
-            return id;
-        }
-
-        @Override
-        public String toString() {
-            return MoreObjects.toStringHelper(this)
-                    .add("id", id)
-                    .add("value", value)
-                    .toString();
-        }
-    }
 }

@@ -1,3 +1,5 @@
+package com.mns.streams;
+
 import akka.NotUsed;
 import akka.actor.ActorSystem;
 import akka.japi.function.Function;
