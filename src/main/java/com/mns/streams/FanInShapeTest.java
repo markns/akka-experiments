@@ -49,7 +49,7 @@ public class FanInShapeTest {
         final CompletionStage<Done> max = g.run(system);
     }
 
-    static Graph<FanInShape2<Product, Yield, Pair<Product, Yield>>, NotUsed> createFanInShape2() {
+    public static Graph<FanInShape2<Product, Yield, Pair<Product, Yield>>, NotUsed> createFanInShape2() {
 
         final Flow<Object, Pair<Product, Yield>, NotUsed> joinFlow =
                 Flow.of(Object.class)
